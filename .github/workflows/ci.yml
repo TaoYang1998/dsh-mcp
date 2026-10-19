@@ -1,0 +1,40 @@
+name: Rust and ACP control plane
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo build --locked
+      - run: cargo test --locked
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Check acceptance script without calling a model
+        run: |
+          python3 -c 'from pathlib import Path; compile(Path("scripts/e2e_real_model.py").read_text(), "scripts/e2e_real_model.py", "exec")'
+          python3 scripts/e2e_real_model.py --help
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+      - name: Install the pinned dsh control-plane fixture
+        run: |
+          npm install --global @deepseek-ai/dsh@0.2.0-rc.2
+          printf 'DSH_MCP_TEST_NODE=%s\n' "$(command -v node)" >> "$GITHUB_ENV"
+          printf 'DSH_MCP_TEST_DSH_CLI=%s/@deepseek-ai/dsh/lib/bin.js\n' "$(npm root --global)" >> "$GITHUB_ENV"
+      - name: Require real dsh initialize, session/new, session/close, exit
+        env:
+          DSH_MCP_REAL_DSH: "1"
+        run: cargo test --locked --test control_plane -- --nocapture

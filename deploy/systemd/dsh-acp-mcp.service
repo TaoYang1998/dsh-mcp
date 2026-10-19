@@ -1,0 +1,19 @@
+[Unit]
+Description=Shared DSH ACP MCP coordinator
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/dsh-mcp/session-management-20261019/dsh-mcp --daemon
+Environment=DSH_HOME=%h/.dsh
+Environment=DSH_MCP_SOCKET=%t/dsh-mcp/acp.sock
+Environment=DSH_MCP_STATE_DIR=%h/.local/state/dsh_acp/shared
+EnvironmentFile=%h/.config/dsh-mcp/daemon.env
+RuntimeDirectory=dsh-mcp
+RuntimeDirectoryMode=0700
+UMask=0077
+TimeoutStopSec=70s
+KillMode=control-group
+Restart=no
+
+[Install]
+WantedBy=default.target
